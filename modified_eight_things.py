@@ -20,11 +20,11 @@ nSizeofOutput = nSingleOutputSize*nDomains*nContextPerDomain # length of a singl
 nNumberOfPossibleInputPatterns = nItemsPerDomain*nContextPerDomain*nDomains #number of training examples in dataset
 
 sizeItemRepLayer = 8
-sizeContextRepLayer = 8
+sizeContextRepLayer = 4
 sizeSecondLayer = 32
 
 #training properties
-nEpochs = 200
+nEpochs = 500
 eta = 0.001
 
 #construct the input matrix
@@ -89,8 +89,10 @@ plt.savefig('results/OutputMatrix.png')
 plt.close()
 #plt.show()
 #
-#print OutputMatrix_ContextCollapsed.shape
-#plt.imshow(OutputMatrix_ContextCollapsed,interpolation='none')
+print OutputMatrix_ContextCollapsed.shape
+plt.imshow(OutputMatrix_ContextCollapsed,interpolation='none')
+plt.savefig('results/OutputMatrix_ContextCollapsed.png')
+plt.close()
 #plt.show()
 #
 #Calculate similarity matrices
@@ -171,6 +173,14 @@ def get_item_reps():
 				outputvec: OutputMatrix[i].reshape([nSizeofOutput,1])}).flatten()
     return item_reps
 
+def get_second_reps():
+    second_reps = numpy.zeros([nNumberOfPossibleInputPatterns,sizeSecondLayer])
+    for i in range(nNumberOfPossibleInputPatterns):
+	    second_reps[i,:] = session.run(secondhidden, feed_dict = {inputvec_item: InputMatrix[i][0:(nSizeofItemInput)].reshape([nSizeofItemInput,1]),	
+				inputvec_context: InputMatrix[i][nSizeofItemInput:].reshape([nSizeofContextInput,1]), 
+				outputvec: OutputMatrix[i].reshape([nSizeofOutput,1])}).flatten()
+    return second_reps
+
 def log_images(epoch=0):
 	network_outputs = get_network_outputs() 
 	
@@ -178,11 +188,32 @@ def log_images(epoch=0):
 	plt.savefig('results/epoch_%i_networks_output_vs_output.png' %epoch)
 	plt.close()
 	
+#	item_reps = get_item_reps() 
+#	item_rep_norms = numpy.linalg.norm(item_reps,axis=1)
+#	item_reps = item_reps / item_rep_norms[:,numpy.newaxis]
+#	plt.imshow(numpy.dot(item_reps,item_reps.transpose()),cmap='Greys',interpolation='none') #cosine distance
 	item_reps = get_item_reps() 
-	item_rep_norms = numpy.linalg.norm(item_reps,axis=1)
-	item_reps = item_reps / item_rep_norms[:,numpy.newaxis]
-	plt.imshow(numpy.dot(item_reps,item_reps.transpose()),cmap='Greys',interpolation='none') #cosine distance
+	item_rep_sim = numpy.zeros([nNumberOfPossibleInputPatterns,nNumberOfPossibleInputPatterns])
+	for i in xrange(nNumberOfPossibleInputPatterns):
+	    for j in xrange(i,nNumberOfPossibleInputPatterns):
+		item_rep_sim[i,j] = numpy.linalg.norm(item_reps[i]-item_reps[j]) 
+		item_rep_sim[j,i] = item_rep_sim[i,j]
+	plt.imshow(item_rep_sim,cmap='Greys_r',interpolation='none') #cosine distance
 	plt.savefig('results/epoch_%i_item_rep_similarity.png' %epoch)
+	plt.close()
+
+#	second_reps = get_second_reps() 
+#	second_rep_norms = numpy.linalg.norm(second_reps,axis=1)
+#	second_reps = second_reps / second_rep_norms[:,numpy.newaxis]
+#	plt.imshow(numpy.dot(second_reps,second_reps.transpose()),cmap='Greys',interpolation='none') #cosine distance
+	second_reps = get_second_reps() 
+	second_rep_sim = numpy.zeros([nNumberOfPossibleInputPatterns,nNumberOfPossibleInputPatterns])
+	for i in xrange(nNumberOfPossibleInputPatterns):
+	    for j in xrange(i,nNumberOfPossibleInputPatterns):
+		second_rep_sim[i,j] = numpy.linalg.norm(second_reps[i]-second_reps[j]) 
+		second_rep_sim[j,i] = second_rep_sim[i,j]
+	plt.imshow(second_rep_sim,cmap='Greys_r',interpolation='none') #cosine distance
+	plt.savefig('results/epoch_%i_second_rep_similarity.png' %epoch)
 	plt.close()
 
 #run the network
